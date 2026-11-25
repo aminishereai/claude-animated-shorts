@@ -76,6 +76,8 @@ jobs:
           pattern: chunk-*
           merge-multiple: true
           path: chunks
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Join and upscale
         run: |
           ls chunks/*.mp4 | sort | sed "s/^/file '/; s/$/'/" > list.txt

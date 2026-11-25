@@ -53,10 +53,10 @@ jobs:
           cache: npm
           cache-dependency-path: render/package-lock.json
       - run: npm ci --no-audit --no-fund
+      - run: npx remotion browser ensure
       - name: Render chunk
         env:
           COMP: ${{ inputs.comp || 'BridgeShort' }}
-          CHROME: /usr/bin/google-chrome
           PROPS: ${{ inputs.props || '{"w":540,"h":960,"post":{"tier":0.375}}' }}
         run: |
           i=$(printf "%02d" ${{ matrix.chunk }})

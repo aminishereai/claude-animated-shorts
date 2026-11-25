@@ -15,7 +15,9 @@ const n = composition.durationInFrames, c = Number(count), i = Number(idx);
 const a = Math.floor((n * i) / c), b = Math.floor((n * (i + 1)) / c) - 1;
 console.log(`chunk ${i + 1}/${c}: frames ${a}-${b} of ${n}, ${composition.width}x${composition.height}`);
 const t0 = Date.now(); let last = -1;
+try {
 await renderMedia({ composition, serveUrl, inputProps, codec: "h264", crf: 16, outputLocation: out, frameRange: [a, b], concurrency: 1,
   browserExecutable, chromiumOptions, timeoutInMilliseconds: 900000, muted: true,
   onProgress: ({ renderedFrames }) => { if (renderedFrames !== last && renderedFrames % 10 === 0) { last = renderedFrames; console.log(`frames ${renderedFrames}/${b - a + 1} ${((Date.now() - t0) / 1000).toFixed(0)}s`); } } });
+} catch (e) { console.error("RENDER FAILED:", String(e?.message || e).slice(0, 1500)); process.exit(1); }
 console.log(`done in ${((Date.now() - t0) / 1000).toFixed(0)}s, ${(((Date.now() - t0) / 1000) / (b - a + 1)).toFixed(1)} s/frame`);

@@ -1,0 +1,13 @@
+{
+  "id": "KAGGLE_USERNAME/3dio-gpu-render",
+  "title": "3dio-gpu-render",
+  "code_file": "render_gpu.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["KAGGLE_USERNAME/3dio-render-src"],
+  "competition_sources": [],
+  "kernel_sources": []
+}

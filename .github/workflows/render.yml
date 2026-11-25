@@ -1,0 +1,88 @@
+# Splits a Remotion composition across many free GitHub runners (software WebGL, no GPU),
+# then joins the chunks and upscales to the final size.
+name: render
+on:
+  push:
+    branches: ["claude/**"]
+    paths: [".github/workflows/render.yml", "render/**"]
+  workflow_dispatch:
+    inputs:
+      comp:
+        description: Composition id
+        default: BridgeShort
+      chunks:
+        description: Number of parallel machines (max 20 on a free account)
+        default: "20"
+      props:
+        description: Render input props (JSON)
+        default: '{"w":540,"h":960,"post":{"tier":0.375}}'
+      out_size:
+        description: Final size after upscale (WxH)
+        default: 1080x1920
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        run: echo "matrix=$(python3 -c "print(list(range(int('${{ inputs.chunks || '20' }}'))))")" >> "$GITHUB_OUTPUT"
+
+  render:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        chunk: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    defaults:
+      run:
+        working-directory: render
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: render/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Render chunk
+        env:
+          COMP: ${{ inputs.comp || 'BridgeShort' }}
+          CHROME: /usr/bin/google-chrome
+          PROPS: ${{ inputs.props || '{"w":540,"h":960,"post":{"tier":0.375}}' }}
+        run: |
+          i=$(printf "%02d" ${{ matrix.chunk }})
+          node scripts/render-chunk.mjs "out/chunk-$i.mp4" ${{ matrix.chunk }} ${{ inputs.chunks || '20' }} "$PROPS"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunk-${{ matrix.chunk }}
+          path: render/out/*.mp4
+          retention-days: 3
+
+  join:
+    needs: render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: chunk-*
+          merge-multiple: true
+          path: chunks
+      - name: Join and upscale
+        run: |
+          ls chunks/*.mp4 | sort | sed "s/^/file '/; s/$/'/" > list.txt
+          ffmpeg -v error -f concat -safe 0 -i list.txt -c copy joined.mp4
+          W=${OUT%x*}; H=${OUT#*x}
+          ffmpeg -v error -i joined.mp4 -vf "scale=$W:$H:flags=lanczos" -c:v libx264 -crf 16 -preset slow -pix_fmt yuv420p video.mp4
+          ffprobe -v error -show_entries format=duration -of csv=p=0 video.mp4
+        env:
+          OUT: ${{ inputs.out_size || '1080x1920' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: video
+          path: video.mp4
+          retention-days: 7

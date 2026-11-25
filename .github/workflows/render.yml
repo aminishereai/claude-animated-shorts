@@ -70,6 +70,8 @@ jobs:
   join:
     needs: render
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -92,3 +94,7 @@ jobs:
           name: video
           path: video.mp4
           retention-days: 7
+      - name: Publish as pre-release
+        run: gh release create "render-${{ github.run_id }}" video.mp4 --repo "${{ github.repository }}" --prerelease --target "${{ github.sha }}" --title "Render ${{ github.run_id }}" --notes "Render run ${{ github.run_id }}"
+        env:
+          GH_TOKEN: ${{ github.token }}

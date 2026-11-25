@@ -20,6 +20,10 @@ on:
         description: Final size after upscale (WxH)
         default: 1080x1920
 
+concurrency:
+  group: render-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   plan:
     runs-on: ubuntu-latest

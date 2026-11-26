@@ -11,11 +11,14 @@ def sh(cmd):
 
 sh("nvidia-smi --query-gpu=name,memory.total --format=csv || true")
 sh("curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null && apt-get install -y nodejs >/dev/null")
-sh("apt-get install -y libnss3 libatk-bridge2.0-0 libgbm1 libxkbcommon0 libasound2 libxcomposite1 libxdamage1 libxrandr2 libpango-1.0-0 libcairo2 libvulkan1 libegl1 libgles2 >/dev/null 2>&1 || true")
+# Chrome's libraries, one at a time so a missing name doesn't block the rest (Ubuntu 24.04 uses *t64 names)
+LIBS = "libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 libgbm1 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libpango-1.0-0 libcairo2 libasound2t64 libvulkan1 libegl1 libgles2 libgtk-3-0t64 libxshmfence1 fonts-liberation"
+sh(f"for p in {LIBS}; do apt-get install -y -qq $p >/dev/null 2>&1 || echo missing: $p; done")
 sh("rm -rf /kaggle/working/cas && git clone -q --depth 1 -b claude/project-thread-nlpbhh https://github.com/aminishereai/claude-animated-shorts /kaggle/working/cas")
 os.chdir("/kaggle/working/cas/render")
 sh("npm ci --no-audit --no-fund --loglevel=error")
 sh("npx remotion browser ensure --chrome-mode=chrome-for-testing")
+sh("for f in $(find node_modules/.remotion -type f -name 'chrome' -o -type f -name 'chrome-headless-shell'); do echo $f; ldd $f | grep 'not found' || echo '  all libraries found'; done")
 
 def run(out, idx, count, gl, timeout):
     env = dict(os.environ, COMP=COMP, GL=gl, CHROME_MODE="chrome-for-testing")
